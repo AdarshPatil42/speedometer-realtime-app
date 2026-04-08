@@ -1,20 +1,32 @@
+import prisma from "../config/prisma";
 import { getIO } from "../sockets/socket";
 
 const generateSpeed = (): number => {
-    // simulate speed between 0–120 km/h
     return Math.floor(Math.random() * 120);
 };
 
 export const startSpeedSimulation = () => {
-    setInterval(() => {
-        const speed = generateSpeed();
+    setInterval(async () => {
+        try {
+            const speed = generateSpeed();
 
-        console.log(`Speed generated: ${speed}`);
+            // save to DB
+            const savedData = await prisma.speedData.create({
+                data: {
+                    speed,
+                },
+            });
 
-        const io = getIO();
-        io.emit("speed_update", {
-            speed,
-            timestamp: new Date(),
-        });
+            console.log(`Speed saved: ${savedData.speed}`);
+
+            // emit to clients
+            const io = getIO();
+            io.emit("speed_update", {
+                speed: savedData.speed,
+                timestamp: savedData.createdAt,
+            });
+        } catch (error) {
+            console.error("Error in speed simulation:", error);
+        }
     }, 1000);
 };
